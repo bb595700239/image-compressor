@@ -105,6 +105,10 @@ stdout 输出 NDJSON（每行一个 JSON 事件：`scan-done` / `file` / `file-r
 
 > 注意：portable 版（`图片压缩器-x.x.x-x64.exe`）外层是解压外壳，不转发命令行参数；CLI 请调用 `win-unpacked\图片压缩器.exe` 或 NSIS 安装后的 exe。
 
+### 作为 AI Skill 使用
+
+仓库附带 Claude Code skill：`.claude/skills/image-compress/`。在仓库目录里用 Claude Code 时会被自动发现——直接说"把 xx 文件夹的图片压成 WebP"，它就知道调这个工具的 CLI、怎么读 NDJSON 输出、怎么汇报结果。想全局可用的话，把该目录复制到 `~/.claude/skills/` 即可。
+
 ## 项目结构
 
 ```
