@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>图片压缩器</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo"></span>
+      <h1>图片压缩器</h1>
+    </div>
+    <span class="topbar-hint">PNG / JPG 批量压缩 · WebP / PNG / JPG 输出 · 可限制最大宽度 / 高度</span>
+  </header>
+
+  <main class="layout">
+    <!-- 左栏：输入与设置 -->
+    <section class="col-left">
+      <div class="col-scroll">
+      <div class="card">
+        <div class="card-title">输入</div>
+        <div id="dropzone" class="dropzone" title="点击选择文件夹，或把文件/文件夹拖进来">
+          <div class="dz-icon">📁</div>
+          <div class="dz-text">拖拽图片或文件夹到这里</div>
+          <div class="dz-sub">支持 .png / .jpg / .jpeg，可多选</div>
+        </div>
+        <ul class="input-list" id="inputList" hidden></ul>
+        <div class="btn-row">
+          <button id="btnAddFiles" class="btn settings-lock">添加文件…</button>
+          <button id="btnAddFolder" class="btn settings-lock">添加文件夹…</button>
+          <button id="btnClearInputs" class="btn btn-ghost" hidden>清空</button>
+        </div>
+
+        <label class="field-label" for="outputPath">输出文件夹</label>
+        <div class="input-row">
+          <input id="outputPath" class="settings-lock" type="text" spellcheck="false"
+                 placeholder="留空默认：输入位置\compressed" />
+          <button id="btnPickOutput" class="btn settings-lock">选择…</button>
+        </div>
+        <div class="setting-hint">与输入填同一文件夹 = 原地压缩：同格式文件直接覆盖（变大是否保留原图由「压缩后更大保留原图」选项决定）</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">压缩设置</div>
+
+        <div class="setting">
+          <div class="setting-label">输出格式</div>
+          <div class="radio-group">
+            <label><input type="radio" class="settings-lock" name="format" value="webp" checked /> 全部 WebP</label>
+            <label><input type="radio" class="settings-lock" name="format" value="png" /> 全部 PNG</label>
+            <label><input type="radio" class="settings-lock" name="format" value="jpg" /> 全部 JPG</label>
+            <label><input type="radio" class="settings-lock" name="format" value="original" /> 保持原格式</label>
+          </div>
+        </div>
+
+        <div class="setting">
+          <div class="setting-label">压缩质量 <span class="setting-value" id="qualityValue">80</span></div>
+          <input type="range" class="settings-lock" id="quality" min="1" max="100" value="80" />
+          <div class="setting-hint">同时作用于 WebP / PNG / JPG，越低体积越小</div>
+        </div>
+
+        <div class="setting">
+          <div class="setting-label">WebP 压缩力度 <span class="setting-value" id="effortValue">4</span></div>
+          <input type="range" class="settings-lock" id="effort" min="0" max="6" step="1" value="4" />
+          <div class="setting-hint">0-6，越大压缩率越高、速度越慢</div>
+        </div>
+
+        <div class="setting">
+          <div class="setting-label">最大宽度（像素）</div>
+          <input type="number" class="settings-lock" id="maxWidth" min="1" step="1" placeholder="留空 = 原始宽度" />
+          <div class="setting-hint">超过该宽度的图片会等比缩小（webp 等其它格式也会处理），不会放大；留空则保持原始尺寸</div>
+        </div>
+
+        <div class="setting">
+          <div class="setting-label">最大高度（像素）</div>
+          <input type="number" class="settings-lock" id="maxHeight" min="1" step="1" placeholder="留空 = 原始高度" />
+          <div class="setting-hint">超过该高度的图片会等比缩小，不会放大；与最大宽度同时设置时，按能同时满足两者的最大尺寸缩放</div>
+        </div>
+
+        <div class="checkbox-grid">
+          <label class="check"><input type="checkbox" class="settings-lock" id="lossless" /> WebP 无损</label>
+          <label class="check"><input type="checkbox" class="settings-lock" id="pngPalette" /> PNG 调色板量化（更小，有损）</label>
+          <label class="check" title="默认原样复制；设置最大宽度/高度时 webp / avif / tiff 等会缩放重编码，gif / bmp / svg 等仍原样复制"><input type="checkbox" class="settings-lock" id="copyOthers" checked /> 包含其它格式图片（webp / gif / svg…）</label>
+          <label class="check"><input type="checkbox" class="settings-lock" id="overwrite" /> 覆盖已存在的输出文件</label>
+          <label class="check" title="勾选后：压缩结果比原图大（或一样大）且格式相同时，还原为原图；不勾选则直接保存压缩结果，即使变大"><input type="checkbox" class="settings-lock" id="keepIfLarger" /> 压缩后更大保留原图</label>
+        </div>
+      </div>
+
+      </div><!-- /col-scroll -->
+
+      <div class="actions">
+        <button id="btnStart" class="btn btn-primary" disabled>开始压缩</button>
+        <button id="btnCancel" class="btn btn-danger" hidden>取消</button>
+      </div>
+    </section>
+
+    <!-- 右栏：进度与日志 -->
+    <section class="col-right">
+      <div class="col-scroll">
+      <div class="card">
+        <div class="progress-head">
+          <span id="progressText">等待开始</span>
+          <span id="progressPct"></span>
+        </div>
+        <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+        <div class="chips">
+          <span class="chip">已处理 <b id="chipDone">0</b></span>
+          <span class="chip">已复制 <b id="chipCopied">0</b></span>
+          <span class="chip">已跳过 <b id="chipSkipped">0</b></span>
+          <span class="chip chip-err">失败 <b id="chipFailed">0</b></span>
+          <span class="chip chip-size" id="chipSize" hidden></span>
+        </div>
+      </div>
+
+      <!-- 对比预览：点击文件日志条目打开 -->
+      <div class="card preview-card" id="previewCard" hidden>
+        <div class="preview-head">
+          <span class="card-title">对比预览</span>
+          <span class="preview-name" id="previewName" title=""></span>
+          <span class="preview-nav">
+            <button id="btnPrev" class="btn btn-ghost btn-mini" title="上一个">←</button>
+            <button id="btnNext" class="btn btn-ghost btn-mini" title="下一个">→</button>
+            <button id="btnClosePreview" class="btn btn-ghost btn-mini" title="关闭">×</button>
+          </span>
+        </div>
+        <div class="preview-size" id="previewSize"></div>
+        <div class="preview-tools">
+          <button id="btnZoomOut" class="btn btn-ghost btn-mini" title="缩小">−</button>
+          <span class="zoom-val" id="zoomVal">100%</span>
+          <button id="btnZoomIn" class="btn btn-ghost btn-mini" title="放大">＋</button>
+          <button id="btnZoom1to1" class="btn btn-ghost btn-mini" title="按原始像素 1:1 显示（再点一次回到适应窗口）">1:1</button>
+          <button id="btnZoomReset" class="btn btn-ghost btn-mini" title="重置缩放和位置">重置</button>
+          <span class="tools-hint">滚轮缩放 · 按住拖动平移 · 左右两图联动</span>
+        </div>
+        <div class="preview-panes">
+          <div class="pane">
+            <div class="pane-label">原图</div>
+            <div class="pane-img checker" id="paneOrig">
+              <div class="pane-zoom" id="zoomOrig"><img id="imgOrig" alt="原图" draggable="false" /></div>
+              <span class="pane-empty" id="emptyOrig"></span>
+            </div>
+            <div class="pane-info" id="infoOrig"></div>
+          </div>
+          <div class="pane">
+            <div class="pane-label">压缩后</div>
+            <div class="pane-img checker" id="paneComp">
+              <div class="pane-zoom" id="zoomComp"><img id="imgComp" alt="压缩后" draggable="false" /></div>
+              <span class="pane-empty" id="emptyComp"></span>
+            </div>
+            <div class="pane-info" id="infoComp"></div>
+          </div>
+        </div>
+        <div class="preview-hint">点击「文件日志」中的任意条目可切换对比；预览图为 2048px 宽以内的缩览，动图仅显示第一帧</div>
+      </div>
+
+      <div class="card log-card">
+        <div class="card-title">文件日志</div>
+        <ul class="log" id="log"></ul>
+        <div class="log-empty" id="logEmpty">还没有记录 —— 添加图片后点击「开始压缩」</div>
+      </div>
+
+      </div><!-- /col-scroll -->
+
+      <div class="actions end">
+        <button id="btnOpenOut" class="btn" hidden>打开输出文件夹</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <script src="renderer.js"></script>
+</body>
+</html>

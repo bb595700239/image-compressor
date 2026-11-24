@@ -1,0 +1,62 @@
+{
+  "name": "image-compressor",
+  "productName": "图片压缩器",
+  "version": "1.3.0",
+  "description": "图片压缩器 —— 带 UI 的桌面版（基于 sharp，支持 WebP / PNG，自动识别透明）",
+  "main": "main.js",
+  "author": "joubn",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable",
+    "dist:mac": "electron-builder --mac"
+  },
+  "dependencies": {
+    "fast-glob": "^3.3.3",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "electron": "^36.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.joubn.image-compressor",
+    "productName": "图片压缩器",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "compress-core.js",
+      "renderer/**/*",
+      "build/icon.ico"
+    ],
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "portable", "arch": ["x64"] },
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.graphics-design",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    }
+  }
+}

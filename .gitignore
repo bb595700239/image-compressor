@@ -1,0 +1,19 @@
+# 依赖
+node_modules/
+
+# electron-builder 打包产物
+release/
+
+# 日志
+*.log
+npm-debug.log*
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# 编辑器
+.vscode/
+.idea/
+
+公众号文章.md
