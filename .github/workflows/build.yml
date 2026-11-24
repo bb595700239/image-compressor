@@ -22,7 +22,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build (NSIS + portable)
-        run: npm run dist
+        # 显式禁用 electron-builder 的隐式发布，发布交给下面的 release job
+        run: npm run dist -- --publish never
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -30,16 +31,10 @@ jobs:
           path: |
             release/*.exe
           if-no-files-found: error
-      - name: Publish to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ github.token }}
-          files: release/*.exe
 
   build-macos-x64:
     name: macOS x64 (Intel)
-    runs-on: macos-13
+    runs-on: macos-15-intel # macos-13 已下线
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build (dmg + zip, unsigned)
-        run: npm run dist:mac -- --x64
+        run: npm run dist:mac -- --x64 --publish never
         env:
           # CI 没有签名证书，构建未签名包（本地自用没问题，分发需签名+公证）
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -61,14 +56,6 @@ jobs:
             release/*.dmg
             release/*.zip
           if-no-files-found: error
-      - name: Publish to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ github.token }}
-          files: |
-            release/*.dmg
-            release/*.zip
 
   build-macos-arm64:
     name: macOS arm64 (Apple Silicon)
@@ -82,7 +69,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build (dmg + zip, unsigned)
-        run: npm run dist:mac -- --arm64
+        run: npm run dist:mac -- --arm64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - name: Upload artifacts
@@ -93,11 +80,23 @@ jobs:
             release/*.dmg
             release/*.zip
           if-no-files-found: error
+
+  # 所有构建完成后，统一发布一次，避免多个 job 并发创建 Release 的竞态
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-macos-x64, build-macos-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: List files
+        run: ls -la dist
       - name: Publish to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ github.token }}
-          files: |
-            release/*.dmg
-            release/*.zip
+          files: dist/*
